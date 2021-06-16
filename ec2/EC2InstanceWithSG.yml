@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "This Template Creates an EC2 instance in a defalut VPC"
+
+Parameters:
+  InstanceTypeParameter:
+    Type: String
+    Description: Choose the type of the Instance
+    AllowedValues:
+      - t2.micro
+      - t3.micro
+      - m1.small
+      - m1.large
+      - c5.large
+    Default: t2.micro
+
+  SecurityGroupForSSHAndHTTP:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: "Select the Security Group for the Instance"
+
+Resources:
+  myEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      KeyName: apsouth1
+      ImageId: ami-0ad704c126371a549
+      InstanceType: !Ref InstanceTypeParameter
+      Monitoring: false
+      SecurityGroupIds:
+        - !Ref SecurityGroupForSSHAndHTTP
+      UserData: !Base64 |
+        #!/bin/bash -ex
+        # put your script here
+        yum update -y
+        yum install httpd -y
+        systemctl start httpd
+        systemctl enable httpd
+        echo "<h1> Hello From $(hostname -f)</h1>" > /var/www/html/index.html
+      Tags:
+        - Key: Name
+          Value: EC2InstanceFromTemplate
+
+Outputs:
+  EC2InstaceOutput:
+    Description: The Public IP Address of the instance
+    Value: !GetAtt myEC2Instance.PublicIp
+    Export:
+      Name: !Sub "${AWS::StackName}"

@@ -1,0 +1,160 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "This Template Creates an EC2 instance in a defalut VPC"
+
+Resources:
+  MainVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: CustomVPC
+
+  PublicSubnetOne:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: ap-south-1a
+      VpcId: !Ref MainVPC
+      MapPublicIpOnLaunch: true
+      CidrBlock: 10.0.1.0/24
+      Tags:
+        - Key: Name
+          Value: public-subnet-1
+
+  PublicSubnetTwo:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: ap-south-1b
+      VpcId: !Ref MainVPC
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: public-subnet-2
+
+  PublicSubnetThree:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: ap-south-1c
+      VpcId: !Ref MainVPC
+      CidrBlock: 10.0.3.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: public-subnet-3
+
+  PrivateSubnetOne:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: ap-south-1a
+      VpcId: !Ref MainVPC
+      CidrBlock: 10.0.4.0/24
+      Tags:
+        - Key: Name
+          Value: private-subnet-1
+
+  PrivateSubnetTwo:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: ap-south-1b
+      VpcId: !Ref MainVPC
+      CidrBlock: 10.0.5.0/24
+      Tags:
+        - Key: Name
+          Value: private-subnet-2
+
+  PrivateSubnetThree:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: ap-south-1c
+      VpcId: !Ref MainVPC
+      CidrBlock: 10.0.6.0/24
+      Tags:
+        - Key: Name
+          Value: private-subnet-3
+
+  MainGateWay:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: Main Internet Gateway
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MainVPC
+      InternetGatewayId: !Ref MainGateWay
+
+  MainPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MainVPC
+      Tags:
+        - Key: Name
+          Value: MainInternetGateway
+
+  MainPublicOne:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetOne
+      RouteTableId: !Ref MainPublicRouteTable
+
+  MainPublicTwo:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetTwo
+      RouteTableId: !Ref MainPublicRouteTable
+
+  MainPublicThree:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetThree
+      RouteTableId: !Ref MainPublicRouteTable
+
+  AllowSSHAndHTTP:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: Allow HTTP and SSH
+      GroupDescription: This Security Group will Allow SSH and HTTP
+      VpcId: !Ref MainVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          FromPort: 0
+          ToPort: 0
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: SG
+  myEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      KeyName: apsouth1
+      ImageId: ami-0ad704c126371a549
+      InstanceType: t2.micro
+      Monitoring: false
+      SubnetId: !Ref PublicSubnetOne
+      SecurityGroupIds:
+        - !Ref AllowSSHAndHTTP
+      UserData: !Base64 |
+        #!/bin/bash -ex
+        # put your script here
+        yum update -y
+        yum install httpd -y
+        systemctl start httpd
+        systemctl enable httpd
+        echo "<h1> Hello From $(hostname -f)</h1>" > /var/www/html/index.html
+      Tags:
+        - Key: Name
+          Value: EC2InstanceFromTemplate
